@@ -1,0 +1,172 @@
+{
+  "description": "シミュレーションダイヤ。起点発分・週末間隔・走行速度はモデル値。run配列は駅間の分数で停車時間を除く。",
+  "default": {
+    "first": 330,
+    "last": 1340,
+    "every": 30,
+    "weekend": 30,
+    "speed": 75,
+    "dwell": 1
+  },
+  "lines": {
+    "special-rapid": {
+      "first": 340,
+      "last": 1300,
+      "every": 15,
+      "weekend": 15,
+      "speed": 97
+    },
+    "kyoto-local": {
+      "first": 300,
+      "last": 1430,
+      "every": 12,
+      "weekend": 15,
+      "run": [
+        3,
+        1,
+        4,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        4,
+        2,
+        3,
+        3,
+        2,
+        2,
+        3
+      ],
+      "dwell": 0.5
+    },
+    "kyoto-rapid": {
+      "first": 343,
+      "last": 1385,
+      "every": 15,
+      "weekend": 15,
+      "speed": 84,
+      "dwell": 0.65
+    },
+    "yamatoji": {
+      "speed": 76,
+      "every": 15,
+      "weekend": 15
+    },
+    "kishuji": {
+      "speed": 72,
+      "every": 15,
+      "weekend": 15
+    },
+    "miyakoji": {
+      "speed": 71,
+      "every": 30,
+      "weekend": 30
+    },
+    "tokaido": {
+      "first": 360,
+      "last": 1295,
+      "every": 15,
+      "weekend": 15,
+      "run": [
+        14,
+        34
+      ],
+      "dwell": 2
+    },
+    "sanyo": {
+      "first": 360,
+      "last": 1280,
+      "every": 20,
+      "weekend": 20,
+      "run": [
+        12,
+        32,
+        36
+      ],
+      "dwell": 2
+    },
+    "sanyo-kodama": {
+      "first": 365,
+      "last": 1260,
+      "every": 60,
+      "weekend": 60,
+      "speed": 157,
+      "dwell": 2
+    },
+    "marine": {
+      "first": 330,
+      "last": 1360,
+      "every": 30,
+      "weekend": 30,
+      "speed": 90
+    },
+    "thunderbird": {
+      "first": 390,
+      "last": 1240,
+      "every": 60,
+      "weekend": 60,
+      "run": [
+        4,
+        22,
+        52
+      ],
+      "dwell": 1
+    },
+    "hokuriku": {
+      "first": 370,
+      "last": 1275,
+      "every": 60,
+      "weekend": 60,
+      "speed": 187
+    },
+    "karasuma": {
+      "first": 320,
+      "last": 1410,
+      "every": 7,
+      "weekend": 8,
+      "speed": 45,
+      "dwell": 0.5
+    },
+    "hankyu": {
+      "first": 375,
+      "last": 1320,
+      "every": 10,
+      "weekend": 10,
+      "speed": 79
+    }
+  },
+  "transfer": {
+    "default": 4,
+    "crossOperator": 8,
+    "shinkansen": 10,
+    "stations": {
+      "新大阪": 10,
+      "敦賀": 8,
+      "岡山": 8
+    }
+  },
+  "walks": [
+    [
+      "岡山",
+      "岡山駅前",
+      10
+    ],
+    [
+      "大阪",
+      "大阪梅田",
+      10
+    ],
+    [
+      "四条",
+      "烏丸",
+      6
+    ],
+    [
+      "三ノ宮",
+      "三宮",
+      7
+    ]
+  ]
+}
