@@ -1,18 +1,17 @@
-// Original low-poly glTF vehicles. Local Z is forward, Y is up; dimensions in metres.
+// Original boxy glTF vehicles. Local Z is forward, Y is up; dimensions in metres.
 import fs from 'node:fs/promises';
 const palettes = {
-  jr: ['#c5d6db','#12747d',1.4,3.65,0.28],
-  private: ['#773447','#efc99e',1.39,3.58,0.42],
-  shinkansen: ['#e7eef1','#244b8d',1.64,3.75,5.25],
-  subway: ['#bbc7d0','#d76c32',1.32,3.22,0.2],
-  express: ['#e5ded2','#993e35',1.46,3.92,2.15],
+  jr: ['#c5d6db','#12747d',1.4,3.65,19.5],
+  private: ['#773447','#efc99e',1.39,3.58,19.5],
+  shinkansen: ['#e7eef1','#244b8d',1.64,3.75,24],
+  subway: ['#bbc7d0','#d76c32',1.32,3.22,18.5],
+  express: ['#e5ded2','#993e35',1.46,3.92,20.5],
 };
 const linear = h => [1,3,5].map(i => {
   const x = parseInt(h.slice(i,i+2),16)/255;
   return x<0.04045 ? x/12.92 : ((x+0.055)/1.055)**2.4;
 });
-function train([shell,stripe,width,top,nose],role) {
-  const cab=role!=='car';
+function train([shell,stripe,width,top,length],role) {
   const mats = [shell,stripe,'#263b46','#47535c','#99b9c7','#fff4c8','#8c312f'].map((hex,i)=>({
     pbrMetallicRoughness:{baseColorFactor:[...linear(hex),1], metallicFactor:0.15,roughnessFactor:0.66},
     emissiveFactor:i===4?[0.9,0.64,0.30]:i===5?[1,0.9,0.62]:i===6?[1,0.04,0.03]:[0,0,0],
@@ -31,40 +30,26 @@ function train([shell,stripe,width,top,nose],role) {
     for(let i=0;i<4;i++){const j=(i+1)%4;quad(mat,a[i],a[j],b[j],b[i]);}
     quad(mat,...a.reverse());quad(mat,...b);
   }
-  const length= nose>4?24:19.5;
-  const rear=-length/2, end=length/2, shoulder=cab?end-nose:end-0.15;
-  const ring=(z,w,h)=>[[-w,.75],[w,.75],[w,h-.33],[w*.82,h],[-w*.82,h],[-w,h-.33]].map(([x,y])=>[x,y,z]);
-  const rings=[ring(rear,width*.9,top-.12),ring(rear+.32,width,top),ring(shoulder,width,top),
-    ring(end,cab&&nose>1?width*.48:width*.92,cab&&nose>1?1.65:top-.18)];
-  for(let i=1;i<rings.length;i++) for(let j=0;j<6;j++) {
-    const k=(j+1)%6;
-    quad(j===0?3:0,rings[i-1][j],rings[i-1][k],rings[i][k],rings[i][j]);
-  }
-  for(const endRing of [rings[0].slice().reverse(),rings.at(-1)]) {
-    for(let i=1;i<endRing.length-1;i++) quad(0,endRing[0],endRing[i],endRing[i+1],endRing[i+1]);
-  }
-  const run=shoulder-rear-.7,mid=rear+.4+run/2;
+  const rear=-length/2, end=length/2, bodyHeight=top-.75;
+  box(0,0,.75+bodyHeight/2,0,width*2,bodyHeight,length-.3);
+  box(0,0,top+.08,0,width*1.86,.16,length-.7);
   for(const side of [-1,1]) {
-    box(1,side*width,1.70,mid,.025,.26,run);
-    for(let j=0;j<11;j++) {
-      const z=rear+.65+(j+.5)*(run-.6)/11;
-      if(j===2||j===8) box(3,side*width,1.9,z,.04,2.22,1.22);
-      box(4,side*(width+.025),top-.99,z,.035,.75,(run-.6)/11*.72);
+    box(1,side*(width+.01),1.68,0,.035,.25,length-.8);
+    for(let j=0;j<9;j++) {
+      const z=rear+1.25+j*(length-2.5)/8;
+      if(j===2||j===6) box(3,side*(width+.025),1.72,z,.045,1.95,.9);
+      else box(4,side*(width+.025),top-.93,z,.045,.72,.95);
     }
   }
-  if(cab) {
-    const z=shoulder+.05;
-    if(nose>1) {
-      quad(2,[-width*.74,top+.012,z],[width*.74,top+.012,z],
-        [width*.58,top-(top-1.65)*.53+.02,z+nose*.53],[-width*.58,top-(top-1.65)*.53+.02,z+nose*.53]);
-    } else box(2,0,top-1,end+.02,width*1.72,1.05,.06);
+  for(const z of [-length*.31,length*.31]) {
+    box(3,0,.54,z,width*1.68,.6,2.8);
+  }
+  if(role!=='car') {
+    box(2,0,top-.78,end+.03,width*1.22,.55,.08);
+    const light=role==='tail'?6:5;
     for(const side of [-1,1]) {
-      box(role==='tail'?6:5,side*width*(nose>1?.34:.72),1.40,end+.035,.32,.18,.08);
+      box(light,side*width*.66,1.05,end+.06,.2,.16,.08);
     }
-  }
-  for(const z of [-1,1]) {
-    box(3,0,.54,z*length*.31,width*1.68,.6,2.8);
-    box(3,0,top+.13,z*length*.18,1.45,.26,2.1);
   }
   const accessors=[], bufferViews=[], parts=[], primitives=[];
   let byteLength=0;
