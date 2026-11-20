@@ -106,6 +106,47 @@ describe('収録経路による時刻表検索', () => {
     expect(duration).toBeGreaterThanOrEqual(27)
     expect(duration).toBeLessThanOrEqual(32)
   })
+  it.each([
+    ['大阪メトロ', '新大阪', '天王寺', 'osaka-midosuji'],
+    ['大阪メトロ谷町線', '大日', '八尾南', 'osaka-tanimachi'],
+    ['大阪メトロ四つ橋線', '西梅田', '住之江公園', 'osaka-yotsubashi'],
+    ['大阪メトロ千日前線', '野田阪神', '南巽', 'osaka-sennichimae'],
+    ['大阪メトロ堺筋線', '天神橋筋六丁目', '天下茶屋', 'osaka-sakaisuji'],
+    ['大阪メトロ長堀鶴見緑地線', '大正', '門真南', 'osaka-nagahori'],
+    ['大阪メトロ今里筋線', '井高野', '今里', 'osaka-imazatosuji'],
+    ['大阪メトロ南港ポートタウン線', '住之江公園', 'コスモスクエア', 'osaka-nanko'],
+    ['北大阪急行', '江坂', '箕面萱野', 'kita-osaka'],
+    ['近鉄名古屋線', '近鉄名古屋', '津', 'kintetsu-nagoya'],
+    ['一畑電車', '電鉄出雲市', '松江しんじ湖温泉', 'ichibata-matsue'],
+    ['静岡鉄道', '新静岡', '新清水', 'shizuoka-shizutetsu'],
+    ['富山地方鉄道', '電鉄富山', '宇奈月温泉', 'toyama-main'],
+    ['名鉄名古屋本線', '豊橋', '名鉄岐阜', 'meitetsu-main'],
+    ['名古屋市営地下鉄', '藤が丘', '高畑', 'nagoya-higashiyama'],
+    ['東京メトロ銀座線', '浅草', '渋谷', 'tokyo-ginza'],
+    ['京王井の頭線', '渋谷', '吉祥寺', 'keio-inokashira'],
+    ['JR山陽線', '門司', '下関', 'sanyo-local-west'],
+    ['JR草津線', '草津', '柘植', 'kusatsu'],
+    ['阪堺電車', '恵美須町', '浜寺駅前', 'hankai'],
+    ['阪神なんば線', '大阪難波', '尼崎（阪神）', 'hanshin-namba'],
+    ['広島電鉄白島線', '白島', '八丁堀（広島）', 'hiroshima-hakushima'],
+    ['富山地方鉄道市内軌道線', '南富山駅前', '富山大学前', 'toyama-tram-main'],
+    ['富山地方鉄道富山港線', '岩瀬浜', '富山大学前', 'toyama-tram-port-university'],
+    ['とさでん伊野・後免線', '伊野', '後免町', 'tosaden-ino-gomen'],
+    ['とさでん伊野・桟橋線', '伊野', '桟橋車庫前', 'tosaden-ino-sambashi', '08:00'],
+    ['とさでん後免・桟橋線', '桟橋通四丁目', '文珠通', 'tosaden-gomen-sambashi', '06:00'],
+    ['とさでん駅前・桟橋線', '高知駅前', '桟橋通五丁目', 'tosaden-station-sambashi'],
+    ['とさでん駅前・伊野線', '高知駅前', '枡形', 'tosaden-station-ino', '08:00'],
+    ['豊橋鉄道渥美線', '新豊橋', '三河田原', 'toyohashi-atsumi'],
+    ['豊橋鉄道市内線・赤岩口方面', '駅前', '赤岩口', 'toyohashi-azumada-akarock'],
+    ['豊橋鉄道市内線・運動公園前方面', '駅前', '運動公園前', 'toyohashi-azumada-undokoen'],
+  ])('%sの追加区間を検索できる', (_name, from, to, lineId, time = '09:00') => {
+    const journey = plan({from, to, time}).find(candidate => candidate.steps.some(step => step.line === lineId))
+    expect(journey).toBeDefined()
+    if (!journey) throw new Error(`${lineId} route not found: ${from} -> ${to}`)
+    checkPath(journey)
+    expect(journey.steps[0].from).toBe(from)
+    expect(journey.steps.at(-1)?.to).toBe(to)
+  })
 })
 
 describe('乗り換えの境界条件', () => {

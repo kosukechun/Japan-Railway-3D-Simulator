@@ -135,6 +135,150 @@
       "every": 10,
       "weekend": 10,
       "speed": 79
+    },
+    "osaka-midosuji": {
+      "speed": 40,
+      "every": 7,
+      "weekend": 8,
+      "dwell": 0.5
+    },
+    "osaka-chuo": {
+      "speed": 40,
+      "every": 8,
+      "weekend": 8,
+      "dwell": 0.5
+    },
+    "osaka-tanimachi": {
+      "speed": 40,
+      "every": 6,
+      "weekend": 7,
+      "dwell": 0.5
+    },
+    "osaka-yotsubashi": {
+      "speed": 40,
+      "every": 7,
+      "weekend": 8,
+      "dwell": 0.5
+    },
+    "osaka-sennichimae": {
+      "speed": 40,
+      "every": 6,
+      "weekend": 7,
+      "dwell": 0.5
+    },
+    "osaka-sakaisuji": {
+      "speed": 40,
+      "every": 7,
+      "weekend": 8,
+      "dwell": 0.5
+    },
+    "osaka-nagahori": {
+      "speed": 40,
+      "every": 7,
+      "weekend": 8,
+      "dwell": 0.5
+    },
+    "osaka-imazatosuji": {
+      "speed": 40,
+      "every": 10,
+      "weekend": 10,
+      "dwell": 0.5
+    },
+    "osaka-nanko": {
+      "speed": 40,
+      "every": 8,
+      "weekend": 8,
+      "dwell": 0.5
+    },
+    "kita-osaka": {
+      "speed": 56,
+      "every": 10,
+      "weekend": 10,
+      "dwell": 0.5
+    },
+    "kintetsu-nagoya": {
+      "speed": 64,
+      "every": 15,
+      "weekend": 15,
+      "dwell": 0.7
+    },
+    "ichibata-matsue": {
+      "speed": 50,
+      "every": 30,
+      "weekend": 30,
+      "dwell": 0.7
+    },
+    "ichibata-taisha": {
+      "speed": 45,
+      "every": 30,
+      "weekend": 30,
+      "dwell": 0.7
+    },
+    "shizuoka-shizutetsu": {
+      "speed": 45,
+      "every": 10,
+      "weekend": 10,
+      "dwell": 0.5
+    },
+    "toyama-main": {
+      "speed": 54,
+      "every": 20,
+      "weekend": 30,
+      "dwell": 0.8
+    },
+    "toyama-fujikoshi": {
+      "speed": 38,
+      "every": 20,
+      "weekend": 20,
+      "dwell": 0.5
+    },
+    "toyama-kamitaki": {
+      "speed": 42,
+      "every": 20,
+      "weekend": 20,
+      "dwell": 0.5
+    },
+    "meitetsu-main": {
+      "speed": 72,
+      "every": 15,
+      "weekend": 15,
+      "dwell": 0.7
+    },
+    "nagoya-higashiyama": {
+      "speed": 40,
+      "every": 6,
+      "weekend": 7,
+      "dwell": 0.5
+    },
+    "tokyo-ginza": {
+      "speed": 40,
+      "every": 5,
+      "weekend": 6,
+      "dwell": 0.5
+    },
+    "tokyo-marunouchi": {
+      "speed": 40,
+      "every": 6,
+      "weekend": 7,
+      "dwell": 0.5
+    },
+    "tokyo-hibiya": {
+      "speed": 40,
+      "every": 6,
+      "weekend": 7,
+      "dwell": 0.5
+    },
+    "tokyo-tozai": {
+      "speed": 42,
+      "every": 5,
+      "weekend": 6,
+      "dwell": 0.5
+    },
+    "keio-inokashira": {
+      "speed": 50,
+      "every": 8,
+      "weekend": 8,
+      "dwell": 0.5
     }
   },
   "transfer": {
@@ -166,6 +310,31 @@
     [
       "三ノ宮",
       "三宮",
+      7
+    ],
+    [
+      "大阪",
+      "梅田",
+      4
+    ],
+    [
+      "大阪梅田",
+      "梅田",
+      5
+    ],
+    [
+      "名古屋",
+      "名鉄名古屋",
+      5
+    ],
+    [
+      "名古屋",
+      "近鉄名古屋",
+      7
+    ],
+    [
+      "名鉄名古屋",
+      "近鉄名古屋",
       7
     ]
   ]

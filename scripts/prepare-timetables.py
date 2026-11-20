@@ -1,4 +1,4 @@
-"""Import licensed Okayama tram GTFS and Kobe/Kyoto subway timetable CSVs.
+"""Import licensed railway, tram and subway timetables.
 
 Run with Python 3.10+ from any directory. Use --download to fetch source
 files into a temporary or caller-supplied directory. See TIMETABLE_SOURCES.md.
@@ -17,10 +17,14 @@ from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
+from service_patterns import STATION_IDS
+
 
 ROOT = Path(__file__).resolve().parents[1]
 OKAYAMA_ZIP = 'https://okdweb.jcld.jp/gtfs/gtfs.zip'
 OKAYAMA_PAGE = 'https://loc.bus-vision.jp/ryobi/view/opendata.html'
+AKECHI_ZIP = 'https://api.gtfs-data.jp/v2/organizations/aketetsu/feeds/akechirailway/files/feed.zip?rid=current'
+ISE_ZIP = 'https://api.gtfs-data.jp/v2/organizations/isetetu/feeds/iserailway/files/feed.zip?rid=current'
 KOBE_PAGE = 'https://kotsu.city.kobe.lg.jp/company/overview/open-data/subway-opendata/'
 KYOTO_PAGE = 'https://data.city.kyoto.lg.jp/dataset/00692/'
 KYOTO_FILES = {
@@ -49,11 +53,83 @@ OKADEN_LINES = {
     '1001': ('okaden-higashiyama', '#dc7452'),
     '1002': ('okaden-seikibashi', '#5aa3d8'),
 }
+RAIL_FEEDS = {
+    'akechi': {
+        'url': AKECHI_ZIP, 'operator': '明知鉄道', 'page': 'https://www.aketetsu.co.jp/',
+        'license': 'CC BY 4.0',
+        'routes': {'1': ('akechi', '2'), '1C': ('akechi-express', '2'), '1D': ('akechi-express', '2')},
+    },
+    'ise-railway': {
+        'url': ISE_ZIP, 'operator': '伊勢鉄道', 'page': 'https://isetetu.co.jp/',
+        'license': 'CC BY 4.0',
+        'routes': {'10': ('ise-railway', '2'), '20': ('ise-nanki', '2'), '30': ('ise-mie', '2')},
+    },
+    'toyama-tram': {
+        'url': 'https://api.gtfs-data.jp/v2/organizations/chitetsu/feeds/chitetsushinaidensha/files/feed.zip?rid=current',
+        'operator': '富山地方鉄道', 'page': 'https://gtfs-data.jp/search?agencyId=chitetsu&feedId=chitetsushinaidensha',
+        'license': 'CC0 1.0',
+        'routes': {
+            '市内軌道線(3001-1)': ('toyama-tram-main', '3'),
+            '市内軌道線(3001-2)': ('toyama-tram-main', '3'),
+            '市内軌道線(3002-1)': ('toyama-tram-main', '3'),
+            '市内軌道線(3002-2)': ('toyama-tram-main', '3'),
+            '市内軌道線(3008-1)': ('toyama-tram-main', '3'),
+            '市内軌道線(3008-2)': ('toyama-tram-main', '3'),
+            '富山港線（南富山）(3004-1)': ('toyama-tram-port-south', '3'),
+            '富山港線（南富山）(3004-2)': ('toyama-tram-port-south', '3'),
+            '富山港線（南富山）(3004-3)': ('toyama-tram-port-south', '3'),
+            '富山港線（南富山）(3004-4)': ('toyama-tram-port-south', '3'),
+            '富山港線（富山大学前）(3005-1)': ('toyama-tram-port-university', '3'),
+            '富山港線（富山大学前）(3005-2)': ('toyama-tram-port-university', '3'),
+            '富山港線（富山大学前）(3005-3)': ('toyama-tram-port-university', '3'),
+            '富山港線（富山大学前）(3005-4)': ('toyama-tram-port-university', '3'),
+            '環状線(3003-1)': ('toyama-tram-loop', '3'),
+        },
+        'ignored_routes': {'富山港線（環状線）(3006-1)', '富山港線（環状線）(3006-2)'},
+        'terminal_stop_ids': {'環状線(3003-1)': '富山駅（環状線終着）'},
+    },
+    'tosaden': {
+        'url': 'https://api-public.odpt.org/api/v4/files/odpt/TosadenTraffic/Streetcar.zip?date=20260801',
+        'operator': 'とさでん交通', 'page': 'https://ckan.odpt.org/dataset/tosaden_traffic_streetcar',
+        'license': 'CC BY 4.0',
+        'routes': {
+            '東西線上り_A': ('tosaden-ino-gomen', '0'),
+            '東西線下り_A': ('tosaden-ino-gomen', '0'),
+            '南北線下り_A': ('tosaden-ino-sambashi', '0'),
+            '南北線上り_A': ('tosaden-ino-sambashi', '0'),
+        },
+        'trip_service_candidates': {
+            '南北線下り_A': (
+                'tosaden-ino-sambashi', 'tosaden-gomen-sambashi',
+                'tosaden-station-ino', 'tosaden-station-sambashi',
+            ),
+            '南北線上り_A': (
+                'tosaden-ino-sambashi', 'tosaden-gomen-sambashi',
+                'tosaden-station-ino', 'tosaden-station-sambashi',
+            ),
+        },
+        'merge_consecutive_stops': {'はりまや橋'},
+    },
+    'toyotetsu': {
+        'url': 'https://loc.bus-vision.jp/gtfs_v2/toyohashitetsudo/gtfsFeed',
+        'operator': '豊橋鉄道', 'page': 'https://bus-viewer.jp/toyotetsu/view/opendataToyotetsu.html',
+        'license': 'CC BY 4.0',
+        'routes': {
+            '10_1_20260108': ('toyohashi-atsumi', '2'),
+            '10_2_20260108': ('toyohashi-azumada-akarock', '0'),
+        },
+        'trip_service_candidates': {
+            '10_2_20260108': ('toyohashi-azumada-akarock', 'toyohashi-azumada-undokoen'),
+        },
+        'stop_name_suffixes': ('(渥美線)', '(市内線)'),
+    },
+}
 WEEKDAYS = 'monday tuesday wednesday thursday friday saturday sunday'.split()
 
 
 def download(target):
     sources = {'rail-okayama.zip': OKAYAMA_ZIP, 'syukujitsu.csv': HOLIDAYS}
+    sources.update({f'{source}.zip': feed['url'] for source, feed in RAIL_FEEDS.items()})
     sources.update({name: f'{CATALOG}/{rid}/download/{name}' for name, rid in KOBE_FILES.items()})
     for rid, (_, _, filename) in KYOTO_FILES.items():
         fields = urllib.parse.urlencode({'download':'Download', 'upload_file':filename}).encode()
@@ -192,6 +268,123 @@ def import_okayama(archive, timetable):
     return {'stations':list(network_stations.values()), 'lines':network_lines}, segments_by_line
 
 
+def import_railway(source_id, archive, timetable, line_stops):
+    source_info = RAIL_FEEDS[source_id]
+    with zipfile.ZipFile(archive) as feed:
+        def read(name):
+            with feed.open(f'{name}.txt') as member:
+                return list(csv.DictReader(io.TextIOWrapper(member, encoding='utf-8-sig', newline='')))
+
+        info, = read('feed_info')
+        stops = {s['stop_id']: s for s in read('stops')}
+        routes = {r['route_id']: r for r in read('routes')}
+        ignored_routes = source_info.get('ignored_routes', set())
+        declared_routes = set(source_info['routes']) | ignored_routes
+        if declared_routes != set(routes):
+            raise ValueError(f'Unexpected railway routes in {source_id}: '
+                             f'{set(routes) ^ declared_routes}')
+        source = {
+            'id': source_id, 'name': f'{source_info["operator"]} GTFS', 'url': source_info['page'],
+            'operatorUrl': info['feed_publisher_url'], 'version': info['feed_version'],
+            'start': gtfs_date(info['feed_start_date']), 'end': gtfs_date(info['feed_end_date']),
+            'license': source_info['license'], 'sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
+        }
+        timetable['sources'].append(source)
+        calendars = timetable['calendars']
+        for row in read('calendar'):
+            key = f'{source_id}-{row["service_id"]}'
+            calendars[key] = {
+                'start': gtfs_date(row['start_date']), 'end': gtfs_date(row['end_date']),
+                'week': [i for i, day in enumerate(WEEKDAYS, 1) if row[day] == '1'],
+                'add': [], 'remove': [],
+            }
+        for row in read('calendar_dates'):
+            key = f'{source_id}-{row["service_id"]}'
+            day = gtfs_date(row['date'])
+            if row['exception_type'] not in ('1', '2'):
+                raise ValueError(f'Unknown exception: {row}')
+            calendar = calendars.setdefault(key, {'week': [], 'start':day, 'end':day, 'add':[], 'remove':[]})
+            calendar['add' if row['exception_type'] == '1' else 'remove'].append(day)
+            if row['exception_type'] == '1' and not calendar['week']:
+                calendar['start'] = min(calendar['start'], day)
+                calendar['end'] = max(calendar['end'], day)
+        times = defaultdict(list)
+        for row in sorted(read('stop_times'), key=lambda r: int(r['stop_sequence'])):
+            times[row['trip_id']].append(row)
+        used_routes = set()
+        for row in read('trips'):
+            route_id = row['route_id']
+            if route_id in ignored_routes:
+                continue
+            if route_id not in source_info['routes'] or routes[route_id]['route_type'] != source_info['routes'][route_id][1]:
+                raise ValueError(f'Unknown railway route {route_id} in {source_id}')
+            line_id = source_info['routes'][route_id][0]
+            calls = list(times[row['trip_id']])
+            while len(calls) > 2 and calls[0].get('pickup_type', '0') == '1':
+                calls.pop(0)
+            while len(calls) > 2 and calls[-1].get('drop_off_type', '0') == '1':
+                calls.pop()
+            if len(calls) < 2:
+                raise ValueError(f'Trip has fewer than two stops: {row["trip_id"]}')
+            if calls[0].get('pickup_type', '0') == '1' or calls[-1].get('drop_off_type', '0') == '1':
+                raise ValueError(f'Unsupported endpoint restriction: {row["trip_id"]}')
+            if any(c.get('pickup_type', '0') not in ('', '0') for c in calls[1:-1]):
+                raise ValueError(f'Unsupported pickup restriction inside trip: {row["trip_id"]}')
+            if any(c.get('drop_off_type', '0') not in ('', '0') for c in calls[1:-1]):
+                raise ValueError(f'Unsupported drop-off restriction inside trip: {row["trip_id"]}')
+            normalized_calls = []
+            normalized_stops = []
+            for call in calls:
+                station_name = stops[call['stop_id']]['stop_name']
+                for suffix in source_info.get('stop_name_suffixes', ()):
+                    if station_name.endswith(suffix):
+                        station_name = station_name[:-len(suffix)]
+                        break
+                station = STATION_IDS.get((source_info['operator'], station_name), station_name)
+                if normalized_stops and normalized_stops[-1] == station:
+                    if stops[call['stop_id']]['stop_name'] not in source_info.get('merge_consecutive_stops', set()):
+                        raise ValueError(f'Unexpected repeated stop in {row["trip_id"]}: {station}')
+                    normalized_calls[-1] = {**normalized_calls[-1], 'departure_time': call['departure_time']}
+                    continue
+                normalized_calls.append(call)
+                normalized_stops.append(station)
+            calls = normalized_calls
+            terminal_stop_id = source_info.get('terminal_stop_ids', {}).get(route_id)
+            if terminal_stop_id:
+                last_name = stops[calls[-1]['stop_id']]['stop_name']
+                if last_name != '富山駅':
+                    raise ValueError(f'Unexpected circular-route terminal in {row["trip_id"]}: {last_name}')
+                normalized_stops[-1] = terminal_stop_id
+            candidates = source_info.get('trip_service_candidates', {}).get(route_id, (line_id,))
+            matching_services = []
+            for candidate in candidates:
+                stations = line_stops.get(candidate)
+                if stations is None:
+                    raise ValueError(f'Unknown service pattern {candidate} in {source_id}')
+                try:
+                    indices = [stations.index(station) for station in normalized_stops]
+                except ValueError:
+                    continue
+                changes = [b - a for a, b in zip(indices, indices[1:])]
+                if all(step > 0 for step in changes) or all(step < 0 for step in changes):
+                    matching_services.append(candidate)
+            if not matching_services:
+                raise ValueError(
+                    f'No matching service pattern for trip {row["trip_id"]}: {normalized_stops}')
+            line_id = min(matching_services, key=lambda candidate: (len(line_stops[candidate]), candidate))
+            timetable['trips'].append({
+                'id': f'{source_id}-{row["trip_id"]}', 'service': line_id, 'source': source_id,
+                'calendar': f'{source_id}-{row["service_id"]}',
+                'stops': normalized_stops,
+                'arr': [parse_minutes(c['arrival_time']) for c in calls],
+                'dep': [parse_minutes(c['departure_time']) for c in calls],
+                **({'headsign': row['trip_headsign']} if row.get('trip_headsign') else {}),
+            })
+            used_routes.add(route_id)
+        if used_routes != set(source_info['routes']):
+            raise ValueError(f'Expected routes missing from {source_id}: {set(source_info["routes"]) - used_routes}')
+
+
 def read_csv(path):
     blob = path.read_bytes()
     try:
@@ -289,8 +482,12 @@ def validate(timetable, network):
         if any(a > d for a,d in zip(arr,dep)) or any(d > a for d,a in zip(dep,arr[1:])):
             raise ValueError(f'Non-monotone times: {trip["id"]}')
         if trip['service'] in stop_lists:
-            indices = [stop_lists[trip['service']].index(s) for s in stops]
-            if any(abs(b-a) != 1 for a,b in zip(indices,indices[1:])):
+            try:
+                indices = [stop_lists[trip['service']].index(s) for s in stops]
+            except ValueError as error:
+                raise ValueError(f'Unknown station in {trip["id"]} on {trip["service"]}: {error}') from error
+            changes = [b-a for a,b in zip(indices,indices[1:])]
+            if not (all(step > 0 for step in changes) or all(step < 0 for step in changes)):
                 raise ValueError(f'Unsupported route variant: {trip["id"]}')
 
 
@@ -303,13 +500,23 @@ def main():
     if args.download:
         args.inputs.mkdir(parents=True, exist_ok=True)
         download(args.inputs)
+    network_path = args.output/'network.json'
+    if not network_path.is_file():
+        raise FileNotFoundError(f'Generate the N02 network before importing timetables: {network_path}')
+    n02 = json.loads(network_path.read_text(encoding='utf-8'))
+    line_stops = {line['id']: line['stops'] for line in n02['lines']}
     timetable = {'sources':[], 'calendars':{}, 'trips':[]}
     network, geometry = import_okayama(args.inputs/'rail-okayama.zip', timetable)
+    for source_id in RAIL_FEEDS:
+        import_railway(source_id, args.inputs/f'{source_id}.zip', timetable, line_stops)
     holidays = {datetime.strptime(r[0], '%Y/%m/%d').date() for r in read_csv(args.inputs/'syukujitsu.csv')[1:]}
     timetable['holidays'] = sorted(d.isoformat() for d in holidays if d.year >= 2025)
     import_kobe(args.inputs, timetable, holidays)
     import_kyoto(args.inputs, timetable, holidays)
-    validate(timetable, network)
+    validate(timetable, {
+        'stations': network['stations'] + n02['stations'],
+        'lines': network['lines'] + n02['lines'],
+    })
     for line_id, segments in geometry.items():
         write_json(args.output/'shapes'/f'{line_id}.json', segments)
     write_json(args.output/'okayama-network.json', network)

@@ -1,21 +1,23 @@
-# ブラウザーで行う AWS Amplify 公開ガイド
+# Amazon S3 と CloudFront で行う公開ガイド
 
-このアプリはパソコン上で無料で動きます。初めてインターネットに公開する人には、公開リポジトリを使う [GitHub Pages の手順](DEPLOY_GITHUB_PAGES.md) が使えます。ここでは、すでに使えるAWSアカウントがあり、料金を確認したうえでAWSでの公開を選んだ人向けに説明します。
+このガイドでは、GitHubなどのソース管理サービスやAWS Amplifyを使わず、パソコンで作ったファイルをAmazon S3に保存し、Amazon CloudFrontからHTTPSで公開します。すでに使えるAWSアカウントがあり、料金を確認したうえでAWSでの公開を選んだ人向けの手順です。
 
 ## 第1章　AWSで何ができる？
 
 ブラウザーにページを届けるコンピューターを**サーバー**と呼びます。自分の部屋に機械を置かず、インターネット経由で他社のコンピューターや保存場所を使う仕組みが**クラウド**です。Amazon Web Services（AWS）は、この仕組みを提供しています。
 
-GitHubにはアプリの設計図にあたるプログラムと変更履歴を保存します。AWSの **Amplify Hosting** はそのプログラムを読み、ブラウザーに届けられるファイルを作って公開します。作り直す作業を**ビルド**、できたサイトをインターネットに公開する作業を**デプロイ**といいます。
+このアプリのソースコードから、ブラウザーに届けるファイルを作る作業を**ビルド**といいます。ビルドしたファイルを **Amazon S3** に保存し、**Amazon CloudFront** から配信する作業を**デプロイ**といいます。ビルドとテストは自分のパソコンで行います。
 
 **AWSマネジメントコンソール**は、AWSをブラウザーで操作する画面です。**AWS CLI**はコマンドと呼ばれる文字列を入力してAWSを操作する道具です。このガイドでは、すべてのAWS設定に画面上のボタンを使います。
 
 ## 第2章　サイトが届くまで
 
 ```text
-GitHub にプログラムと運行・線路データを保存
-                    ↓
-AWS Amplify がビルドして公開用ファイルを配信
+パソコンでテスト・ビルドする
+                    ↓ dist の中身をアップロード
+非公開の Amazon S3 バケットにファイルを保存
+                    ↓ OAC で安全に取得
+Amazon CloudFront が HTTPS で配信
                     ↓
 ブラウザーで公開URLを開く
                     ↓
@@ -23,18 +25,18 @@ PCやスマートフォンが経路を検索し、列車を描画
                     ↘ 地図や都市モデルは公開配信元から読み込み
 ```
 
-公開に使うのは静的ファイルです。公開後は、乗客が検索するたびにAWS側で経路を計算する仕組みを用意する必要はありません。AWSを選ぶ場合も、仮想サーバーやデータベースの作成は不要です。
+公開に使うのは静的ファイルです。ソースコードやGitHubアカウントをAWSに接続する必要はありません。S3バケットは非公開のままにし、CloudFrontだけがファイルを読めるようにします。公開後は、利用者が検索するたびにAWS側で経路を計算する仕組みも不要です。仮想サーバーやデータベースの作成も必要ありません。
 
 ## 第3章　手元のアカウントでログインする
 
 1. 管理者からAWSのログイン用URLを渡されていれば、そのURLを開きます。AWS全般の入口から開く場合は [AWSマネジメントコンソール](https://console.aws.amazon.com/) を使います。
 2. 学校や会社の「AWSアクセスポータル」を使う場合は、いつものユーザーでログインし、「Accounts」から指定されたアカウントと役割を選びます。IAMユーザーと案内されている場合は、アカウントIDまたは別名、ユーザー名、パスワードを入力します。本人確認が出たら、登録済みの認証機器で承認します。[AWSのサインイン方法](https://docs.aws.amazon.com/signin/latest/userguide/introduction-to-iam-user-sign-in-tutorial.html) ／ [組織のアクセスポータル](https://docs.aws.amazon.com/signin/latest/userguide/iam-id-center-sign-in-tutorial.html)
-3. 上部の地域名を押し、「アジアパシフィック（東京）」を選びます。**リージョン**はAWSの設備がある地域で、東京の識別名は `ap-northeast-1` です。同じアプリを探すときは、作成した地域に切り替えます。
+3. 上部の地域名を押し、「アジアパシフィック（東京）」を選びます。S3バケットは東京（`ap-northeast-1`）に作成します。CloudFrontはグローバルサービスなので、S3とは別にリージョンを選ぶ必要はありません。
 4. 上部の検索欄でサービス名を検索できればログイン成功です。アクセス拒否が出る場合は、画面に出たサービス名を伝えてアカウント管理者に利用権限を確認します。
 
 ## 第4章　公開前に料金と予算を確認する
 
-**Amplifyのビルド時間、保存容量、サイトを配信した通信量には料金が発生し得ます。** 無料利用枠は、所定の期間や使用量の範囲で料金が割引される制度です。対象はアカウント作成日や契約プランでも変わります。[Amplifyの料金](https://aws.amazon.com/amplify/pricing/) ／ [無料利用枠の確認方法](https://docs.aws.amazon.com/ja_jp/awsaccountbilling/latest/aboutv2/tracking-free-tier-usage.html)
+**S3の保存容量・リクエストとCloudFrontのリクエスト・配信量には料金が発生し得ます。** 無料利用枠や料金はアカウント、地域、利用量で変わります。WAFや独自ドメインなど、ここで必須にしていないサービスを追加すると料金が増える場合があります。[Amazon S3の料金](https://aws.amazon.com/s3/pricing/) ／ [CloudFrontの料金](https://aws.amazon.com/cloudfront/pricing/) ／ [無料利用枠の確認方法](https://docs.aws.amazon.com/ja_jp/awsaccountbilling/latest/aboutv2/tracking-free-tier-usage.html)
 
 1. コンソール上部で「Billing and Cost Management」を検索し、該当サービスを開きます。「請求書」または「Bills」で今月を選び、利用中のサービス名と金額を見ます。無料利用枠やクレジットがある場合は該当する項目で対象と残量を確認します。[請求画面](https://console.aws.amazon.com/billing/)
 2. 請求画面左の「予算（Budgets）」を開き、「予算を作成」を押します。「テンプレートを使用（シンプル）」を選びます。
@@ -43,67 +45,92 @@ PCやスマートフォンが経路を検索し、列車を描画
 
 予算アラートはメールで知らせます。利用状況の集計には時間がかかるため、通知が届いた時点で金額が超過していることがあります。予算を設定してもサービスや請求は自動停止しません。[AWS Budgetsの通知の仕組み](https://docs.aws.amazon.com/ja_jp/cost-management/latest/userguide/budgets-managing-costs.html)
 
-## 第5章　GitHubとAmplifyをつなぐ
+## 第5章　パソコンでテスト・ビルドする
 
-GitHubで自分のリポジトリを開き、`main` ブランチの一番上に `package.json`、`package-lock.json`、`amplify.yml` があることを確認します。**以下の公開開始操作はビルド・保存・配信の料金につながります。第4章を確認したうえで進めてください。**
+ビルド済みファイルには、アプリ本体のほかに駅・線路データが含まれます。ソース一式ではなく、ビルドで作られた `dist` の中身をアップロードします。**以下の公開開始操作は保存・配信などの料金につながる場合があります。第4章を確認したうえで進めてください。**
 
-1. AWSコンソール上部の検索欄に「Amplify」と入力し、「AWS Amplify」を開きます。
-2. アプリ一覧で「Create new app」（新しいアプリを作成）を押します。以前の表示では「New app」の中の「Host web app」を選びます。
-3. コードの保管先に「GitHub」を選び、次の画面に進みます。
-4. GitHubに移ったら、リポジトリを所有するアカウントを確認し、AWS Amplifyの接続を許可します。
-5. インストール先を選ぶ画面では「Only select repositories」を選び、今回のリポジトリだけを指定します。「Install & Authorize」で確定します。組織が所有するリポジトリでは管理者の承認が求められる場合があります。[GitHub連携の公式手順](https://docs.aws.amazon.com/amplify/latest/userguide/setting-up-GitHub-access.html)
-6. AWS画面に戻ったら、リポジトリ一覧から本アプリを選びます。
-7. 「Branch」で `main` を選んで次へ進みます。
-8. ビルド設定を確認します。リポジトリ直下の `amplify.yml` はNode.js 22を使い、必要なファイルのインストール、テスト、ビルドを順に行います。公開先の項目 `baseDirectory` が `dist` になっていることを確認してください。これらのコマンドはAmplifyが自動実行します。[ビルド設定の公式リファレンス](https://docs.aws.amazon.com/amplify/latest/userguide/yml-specification-syntax.html)
-9. 確認画面で対象のリポジトリ、ブランチ、アプリ名を読み返します。
-10. 料金が発生し得る公開を開始する場合に「Save and deploy」を押します。アプリの一覧からビルド進捗を見られるようになれば連携完了です。[画面写真付きのAWS公式手順](https://docs.aws.amazon.com/hands-on/latest/deploy-webapp-amplify/module-four.html)
+1. パソコンにNode.js 22 LTSを用意します。PowerShellでプロジェクトのフォルダーを開き、バージョンを確認します。
 
-## 第6章　公開URLを開く
+   ```powershell
+   node --version
+   ```
 
-1. Amplifyのアプリを選び、`main` の最新のデプロイを開きます。失敗と表示された場合は、第8章の「ビルド失敗」へ進みます。
-2. 正常に完了したら「Visit deployed URL」か表示されたドメインを押します。`https://main.アプリ固有の文字列.amplifyapp.com` の形のURLがサイトの入口です。[Amplifyの標準ドメイン](https://docs.aws.amazon.com/amplify/latest/userguide/custom-domains.html)
-3. 大阪から京都を検索し、発着時刻が入った候補を選びます。地図を拡大して再生し、時計と列車の両方が動けば検索・描画・再生を確認できました。スマートフォンでも同じURLを開けます。
+   `v22` で始まることを確認します。
+2. 依存関係をインストールし、テストと本番ビルドを実行します。テストまたはビルドが失敗した場合は、ZIPを作ったりアップロードしたりせず、表示されたエラーを解決してください。
 
-## 第7章　サイトを更新する
+   ```powershell
+   npm ci
+   npm test
+   npm run build
+   ```
 
-**更新のたびに再ビルド時間が加算され得ます。** GitHubの `main` に変更を保存すると、Amplifyが新しい版をビルドします。Amplifyのアプリ画面で、最新のデプロイに表示される変更番号とGitHubの履歴が一致するか確認します。成功後、同じ公開URLを再読み込みします。[自動デプロイの仕組み](https://docs.aws.amazon.com/hands-on/latest/deploy-webapp-amplify/module-four.html)
+3. `dist` の中に `index.html` と `assets`、`data` などができたことを確認します。S3コンソールにはZIPではなく、`dist` の中身をアップロードします。ZIPを使ってファイルを移す場合は、ZIPを先に解凍してください。ZIP自体をS3に置いてもWebサイトとして公開されません。
 
-## 第8章　画面がおかしいとき
+## 第6章　S3バケットへファイルをアップロードする
+
+1. AWSコンソール上部の検索欄に「S3」と入力し、「Amazon S3」を開きます。[Amazon S3コンソール](https://console.aws.amazon.com/s3/)
+2. 「Create bucket」を押し、世界中で重複しないバケット名を入力します。リージョンは「アジアパシフィック（東京）」を選びます。
+3. 「Block all public access」を有効のままにします。新規バケットの「Object Ownership」は「Bucket owner enforced」のままにします。公開アクセスを許可するバケットポリシーやACLは設定しません。
+4. バケットを作成して開き、「Upload」を押します。Windowsのエクスプローラーで `dist` フォルダーを開き、その中の全項目（`index.html` と `assets`、`data` などのフォルダー）を選んでアップロード画面へドラッグします。**`dist` フォルダー自体ではなく中身を選びます。**アップロード後、バケット直下に `index.html` と各フォルダーが表示されることを確認します。[S3コンソールでのアップロード](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)
+
+## 第7章　CloudFrontからHTTPSで公開する
+
+1. AWSコンソール上部の検索欄に「CloudFront」と入力し、「Amazon CloudFront」を開きます。[CloudFrontコンソール](https://console.aws.amazon.com/cloudfront/v4/home)
+2. 「Create distribution」を押し、「Single website or app」を選んで次へ進みます。
+3. オリジンの種類で「Amazon S3」を選び、「Browse S3」から先ほど作成したバケットを選択します。S3ウェブサイトエンドポイントではなく、バケットをオリジンにします。
+4. 「Use recommended origin settings」を選びます。これにより、CloudFrontがOrigin Access Control（OAC）を使って非公開バケットのファイルを取得する設定になります。S3バケットは公開せず、AWSが提案するバケットポリシーの更新を確認して進みます。
+5. AWS WAFなどの追加保護はこの手順では選びません（別途料金が発生する場合があります）。設定を確認し、「Create distribution」を押します。[S3オリジンとOACを使うCloudFrontの公式手順](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/GettingStarted.SimpleDistribution.html)
+6. CloudFrontの一覧から作成したディストリビューションを選び、「Behaviors」タブで既定の動作を選んで「Edit」を押します。「Viewer protocol policy」を「Redirect HTTP to HTTPS」にして保存します。[HTTPSへの転送設定](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-https-viewers-to-cloudfront.html)
+7. 「Settings」または「General」タブの「Edit」を開き、「Default root object」に `index.html`（先頭に `/` を付けない）を設定して保存します。[デフォルトルートオブジェクトの設定](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DefaultRootObject.html)
+8. ディストリビューションの状態が「Deploying」から「Deployed」に変わるまで待ちます。詳細に表示される「Distribution domain name」をコピーし、`https://` を付けてブラウザーで開きます。S3のURLではなく、このCloudFrontのURLを公開URLとして使います。
+
+S3ウェブサイトエンドポイントを直接公開する方式もありますが、HTTPのみでバケットを公開する設定が必要です。この手順では採用せず、HTTPSに対応し、S3を非公開に保てるCloudFront経由にしています。[S3ウェブサイトエンドポイントの制約](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteEndpoints.html)
+
+## 第8章　公開内容を確認する
+
+1. CloudFrontのURLを開き、ページがHTTPSで表示されることを確認します。
+2. 大阪から京都を検索し、発着時刻が入った候補を選びます。地図を拡大して再生し、時計と列車の両方が動けば検索・描画・再生を確認できました。スマートフォンでも同じURLを開けます。
+3. 公開URLの末尾に `/data/network.json` を付けて開き、鉄道データが表示されることも確認します。
+
+## 第9章　サイトを更新する
+
+更新は自動では反映されません。パソコンでビルドし直して、S3の同じバケット直下へ `dist` の中身をアップロードします。CloudFrontが以前のファイルを一時保存しているため、更新後はキャッシュを無効化します。
+
+1. 変更後に第5章のテストとビルドをもう一度行います。
+2. S3コンソールで同じバケットを開き、`dist` の中身をアップロードします。既存のオブジェクトは上書きします。
+3. CloudFrontコンソールでディストリビューションを開き、「Invalidations」→「Create invalidation」を選び、パスに `/*` を入力して作成します。完了後、公開URLを再読み込みします。無効化の料金条件は事前に確認してください。[CloudFrontキャッシュの無効化](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation_Requests.html)
+
+## 第10章　画面がおかしいとき
 
 | 症状 | 確認する場所と操作 |
 | --- | --- |
-| GitHubにつながらない | ログイン中のGitHubアカウントを確認し、AmplifyのGitHub選択画面から認証をやり直します。組織の承認待ちは、その組織の管理者に確認します。 |
-| リポジトリが一覧に出ない | GitHubの「Settings」→「Applications」→「Installed GitHub Apps」で対象地域のAWS Amplifyを開き、「Configure」のリポジトリ選択に本アプリを追加します。 |
-| ビルド失敗 | Amplifyで失敗したデプロイを開き、ログの最初のエラーを探します。依存関係の不一致なら `package-lock.json`、ファイルが見つからない場合はリポジトリの階層と英字の大小を確認します。修正してから更新します。 |
-| 公開URLが404 | 「Visit deployed URL」で表示されたURLを開きます。ビルドログと `amplify.yml` の公開フォルダー `dist` を確認し、そこに `index.html` があることを確認します。 |
+| CloudFrontのURLで403 | S3バケット直下に `index.html` があるか確認します。CloudFrontのDefault root objectが `index.html` か、OAC用のバケットポリシーが設定済みかも確認します。 |
+| S3のオブジェクトURLでアクセス拒否 | バケットを非公開にしているため正常です。S3 URLではなくCloudFrontのドメインを使います。 |
+| 鉄道データを読めない | S3バケット直下に `data/network.json` があるか確認します。CloudFrontのURLに `/data/network.json` を付けて開き、更新直後ならキャッシュ無効化を行います。 |
+| ZIPをS3に置いたが表示されない | S3はZIPを自動展開しません。パソコン上でZIPを解凍し、その中のファイルとフォルダーをアップロードします。 |
 | 3D地図が白い | 地図の読み込みメッセージを確認し、ページを再読み込みします。別のブラウザーでも比較します。ブラウザーのグラフィックアクセラレーションが有効か、外部地図のドメインが学校・社内ネットワークで遮断されていないか確認します。 |
 | 建物が見えない | 大阪駅周辺まで戻って拡大し、建物レイヤーの表示を確認します。対象都市外や建物データの配信障害時は線路と地図を使えます。 |
-| 鉄道データを読めない | 公開URLの末尾に `data/network.json` を付けて開き、JSONというデータの文字列が返るか確認します。404なら `public/data` のアップロード漏れを直します。 |
 | CORSエラー | CORSは別サイトからの読み込みを許可する仕組みです。開発者ツールの「Network」で失敗したURLを見て、配信元がブラウザー利用を許可する正規URLか確認します。自身が管理する配信元の場合は、公開サイトのドメインを許可します。 |
 | メモリ不足 | 他のタブを閉じ、建物表示を切って再読み込みします。スマートフォンでは視点を引き、画面に必要な範囲からデータを読み込み直します。 |
-| 料金が想定より多い | 請求画面で当月の「Bills」を開き、サービス・地域別の金額を確認します。Amplifyのデプロイ履歴で回数を調べ、公開を終了する場合は第9章へ進みます。 |
+| 料金が想定より多い | Billing and Cost Managementの「Bills」でサービス別・地域別の料金を確認します。使っていないCloudFrontディストリビューションやS3バケットは第11章の手順で削除します。 |
 
-## 第9章　公開を終了する
+## 第11章　公開を終了する
 
-**この操作でAmplifyの公開サイトが削除されます。** GitHubにはソースと履歴が残ります。削除対象のアプリ名、リージョン、公開URLを確かめてから進めてください。
+**この操作で公開サイトが削除されます。** 削除対象のCloudFrontディストリビューションとS3バケットをよく確認してください。リソースを残すと料金が発生し続ける場合があります。
 
-1. 東京リージョンのAmplifyの一覧から、終了するアプリを開きます。
-2. 左側の「App settings」→「General settings」を開きます。
-3. 「Delete app」を押し、確認画面の指示に従って `delete` を入力し、対象名を確認して削除を確定します。[削除画面付きの公式手順](https://docs.aws.amazon.com/hands-on/latest/build-web-app-s3-lambda-api-gateway-dynamodb/module-six.html)
-4. アプリ一覧から対象が消えたことを確認します。同じ名前で他の地域や別サービスにも資源を作った場合は、請求のサービス・地域名を手掛かりに、それぞれの一覧で用途を確認します。
-5. 請求画面で今月の金額を開き、数日後にも確認します。削除までに生じた料金は集計後に計上される場合があります。既存サイトをほかにも運営している場合は、料金行がどのサイトの利用かを確認します。
+1. CloudFrontコンソールで対象ディストリビューションを選び、「Disable」を実行します。
+2. 状態が無効になり、変更が配信拠点へ反映されるまで待ちます。その後「Delete」でディストリビューションを削除します。[CloudFrontディストリビューションの削除](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/HowToDeleteDistribution.html)
+3. S3コンソールで対象バケットを開き、「Empty」でオブジェクトを空にしてから、バケットを削除します。バケット内の必要なファイルがないことを確かめてください。
+4. Billing and Cost Managementで数日後にも請求を確認します。削除までに生じた料金は集計後に計上される場合があります。
 
-## 第10章　用語集
+## 第12章　用語集
 
 | 言葉 | 意味 |
 | --- | --- |
-| AWS | Amazonが提供するクラウドサービスの総称。 |
-| Amplify | GitHubのコードをビルドし、Webサイトとして配信できるAWSサービス。 |
-| S3 | 画像やデータなどのファイルを保存するAWSサービス。 |
-| CloudFront | 世界各地の配信拠点からファイルを届けるAWSサービス。 |
-| GitHub | プログラムの保管、変更履歴の管理、共同開発に使うサイト。 |
-| リポジトリ | 一つのプロジェクトのファイルと履歴を保管する場所。 |
-| ブランチ | 作業履歴の枝。このプロジェクトの公開に使う枝の名前は `main`。 |
+| Amazon S3 | ファイルをオブジェクトとして保存するAWSサービス。 |
+| Amazon CloudFront | S3などのオリジンからファイルを取得し、HTTPSで利用者へ配信するAWSサービス。 |
+| Origin Access Control（OAC） | CloudFrontだけが非公開S3バケットからファイルを取得できるようにする仕組み。 |
+| `dist` | ビルドが出力する公開用ファイルのフォルダー。中身をS3バケット直下へアップロードします。 |
 | デプロイ | 作ったWebサイトを公開して閲覧できるようにすること。 |
 | ビルド | 開発用のプログラムから配信用のファイルを作ること。 |
 | CDN | 閲覧者に近い配信拠点からデータを届ける仕組み。 |
@@ -113,4 +140,3 @@ GitHubで自分のリポジトリを開き、`main` ブランチの一番上に 
 | 3D Tiles | 立体の建物や地形などを細かい範囲に分けて読み込むための形式。 |
 | GeoJSON | 地点や線、区域を経度・緯度などの座標で表現するデータ形式。 |
 | WebGL | ブラウザーでコンピューターの描画機能を使い、立体を表示する技術。 |
-| GitHub Actions | テスト、ビルド、公開の手順をGitHub上で自動実行する仕組み。 |

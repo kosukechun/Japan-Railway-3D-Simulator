@@ -75,7 +75,7 @@ export class RailwayMap {
     const v=this.viewer=new C.Viewer(this.host,{
       baseLayer:false,baseLayerPicker:false,geocoder:false,homeButton:false,navigationHelpButton:false,
       sceneModePicker:false,selectionIndicator:false,infoBox:false,fullscreenButton:false,
-      animation:false,timeline:false,shouldAnimate:false,scene3DOnly:true,shadows:true,
+      animation:false,timeline:false,shouldAnimate:false,scene3DOnly:true,shadows:false,
       requestRenderMode:true,maximumRenderTimeChange:Infinity,
       contextOptions:{webgl:{alpha:false,antialias:true}},useBrowserRecommendedResolution:true,
     })
@@ -84,8 +84,7 @@ export class RailwayMap {
     v.scene.globe.depthTestAgainstTerrain=true
     v.scene.globe.maximumScreenSpaceError=2.5
     v.scene.screenSpaceCameraController.minimumZoomDistance=4
-    v.shadowMap.maximumDistance=2200
-    v.scene.globe.shadows=C.ShadowMode.RECEIVE_ONLY
+    v.scene.globe.shadows=C.ShadowMode.DISABLED
     v.scene.renderError.addEventListener(()=>{queueMicrotask(()=>this.useCanvas())})
     const provider=new C.UrlTemplateImageryProvider({url:'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
       maximumLevel:18,rectangle:C.Rectangle.fromDegrees(122,20,154,46),
@@ -176,7 +175,7 @@ export class RailwayMap {
     this.loadingTiles=true
     try{
       const tiles=await C.Cesium3DTileset.fromUrl(buildingsUrl,{maximumScreenSpaceError:20,cacheBytes:48*1024*1024,
-        maximumCacheOverflowBytes:32*1024*1024,shadows:C.ShadowMode.ENABLED})
+        maximumCacheOverflowBytes:32*1024*1024,shadows:C.ShadowMode.DISABLED})
       if(this.viewer!==v){tiles.destroy();return}
       tiles.style=new C.Cesium3DTileStyle({color:'color("#98b0b8")'})
       tiles.tileFailed.addEventListener(()=>this.issue('一部の建物タイルを取得できませんでした'))
@@ -238,7 +237,7 @@ export class RailwayMap {
       position:new C.ConstantPositionProperty(C.Cartesian3.fromDegrees(...OSAKA)),
       orientation:new C.ConstantProperty(C.Quaternion.IDENTITY),
       model:{uri:import.meta.env.BASE_URL+'models/'+kind+(i===0?'-cab':i===3?'-tail':'-car')+'.glb',
-        customShader:this.shader,shadows:C.ShadowMode.ENABLED,distanceDisplayCondition:new C.DistanceDisplayCondition(0,3200)},
+        customShader:this.shader,shadows:C.ShadowMode.DISABLED,distanceDisplayCondition:new C.DistanceDisplayCondition(0,3200)},
     }))
     const marker=v.entities.add({position:new C.ConstantPositionProperty(C.Cartesian3.fromDegrees(...OSAKA)),point:{
       pixelSize:10,color:css(color),outlineWidth:2,outlineColor:C.Color.WHITE,disableDepthTestDistance:Infinity,

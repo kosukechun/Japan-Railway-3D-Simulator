@@ -10,8 +10,13 @@
 | 神戸市交通局・西神・山手線／北神線 | 2025-03-15～2026-12-28 | 685 | 2025年3月15日改正。平日・土休日、東西方向別の各列車の停車時刻を抽出。名谷発や新神戸止まり、日付をまたぐ運行を含む。[神戸市交通局](https://kotsu.city.kobe.lg.jp/company/overview/open-data/subway-opendata/)・[市データカタログ](https://catalog.city.kobe.lg.jp/dataset/3541-5-2-2-2-f6a28b58cd4c8777-6741f3e3e026f2c8)・[CC BY 2.1 JP](https://creativecommons.org/licenses/by/2.1/jp/) |
 | 神戸市交通局・海岸線 | 2026-03-05～2026-03-13 | 465 | 市カタログに3月5日付で収録された旧表。現行版の時刻として使えるのは新たに取得・照合した場合に限る。[3月14日のダイヤ改正](https://kotsu.city.kobe.lg.jp/subway/kaisei/)・[CC BY 2.1 JP](https://creativecommons.org/licenses/by/2.1/jp/) |
 | 岡山電気軌道・東山線／清輝橋線 | 2026-11-01～2027-10-31 | 1,194／592 | 岡山電気軌道株式会社「路面電車」GTFSを加工。配信版名は「20261101_おかやまマラソン2026」。17の乗り場レコードを16停留場として使用。事業者が配布する線形を停留場間で分割。[岡山電気軌道株式会社](https://okayama-kido.co.jp/tramway/)・[Bus-Vision 配布・利用条件](https://loc.bus-vision.jp/ryobi/view/opendata.html)・[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja) |
+| 明知鉄道・明知線 | 2026-03-14～2027-03-31 | 28 | 普通26便、急行2便。途中停車駅が異なる急行は別系統に分け、始終点で乗降不可の停留場を便の始終点から除外。[明知鉄道](https://www.aketetsu.co.jp/)・[現行GTFS](https://api.gtfs-data.jp/v2/organizations/aketetsu/feeds/akechirailway/files/feed.zip?rid=current)・[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja) |
+| 伊勢鉄道・伊勢線 | 2026-03-14～2027-03-31 | 83 | 普通44便、特急南紀12便、快速みえ27便。南紀・みえは伊勢線区間の停車時刻を収録。[伊勢鉄道](https://isetetu.co.jp/)・[現行GTFS](https://api.gtfs-data.jp/v2/organizations/isetetu/feeds/iserailway/files/feed.zip?rid=current)・[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja) |
+| 富山地方鉄道・市内軌道線／富山港線 | 2026-03-14～2027-03-13 | 675 | 路線・運行日の異なるGTFS便を収録。環状線の終着駅を別IDで扱い、複数回周回する便は対象外。[GTFSデータリポジトリ](https://gtfs-data.jp/search?agencyId=chitetsu&feedId=chitetsushinaidensha)・[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/deed.ja) |
+| とさでん交通・路面電車 | 2026-08-01～2027-04-30 | 1,024 | GTFS便の停車駅順で伊野・後免・桟橋・高知駅前系統を選択。同一停留場の連続レコードは到着時刻と最終発車時刻を保持してまとめる。[ODPTデータセット](https://ckan.odpt.org/dataset/tosaden_traffic_streetcar)・[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja) |
+| 豊橋鉄道・渥美線／市内線 | 2026-01-08～2027-04-24 | 1,133 | 渥美線388便、市内線745便。市内線の赤岩口・運動公園前の枝線を便の停車順で分類。GTFSの特定日追加（2027-04-29）も保持。[GTFS配布・利用条件](https://bus-viewer.jp/toyotetsu/view/opendataToyotetsu.html)・[豊橋鉄道](https://www.toyotetsu.com/)・[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja) |
 
-件数は曜日別の表や特定日向けの便を合わせた収録数です。日別の運行本数は、営業日のカレンダーを適用して決まります。岡山は公開GTFSの曜日、運休・追加日をそのまま使用しています。配信元が「テスト配信」としている静的データです。シミュレーション路線でも2025～2027年の国民の祝日・休日には設定ファイルの土休日間隔を使います。
+件数は曜日別の表や特定日向けの便を合わせた収録数です。日別の運行本数は、営業日のカレンダーを適用して決まります。岡山・明知鉄道・伊勢鉄道・富山・とさでん・豊橋鉄道は、公開GTFSの曜日、運休・追加日を使用しています。配信元が「テスト配信」としている静的データです。シミュレーション路線でも2025～2027年の国民の祝日・休日には設定ファイルの土休日間隔を使います。
 
 京都・神戸のCSVは途中駅の着発を分けて掲載していません。収録された分をその駅の着発両方に使用します。地下鉄各線の2026年12月28日という上限は、未確認の年末年始ダイヤを適用しないためにこの版で定めた収録期限です。公式の次回改正日を表す日付ではありません。祝日・振替休日を内閣府の公表日から判定し、神戸の2025年末年始は市の案内を適用しました。行事時の臨時便や運休情報は追跡していません。[内閣府「国民の祝日」](https://www8.cao.go.jp/chosei/shukujitsu/gaiyou.html)・[神戸市交通局 年末年始の運行](https://kotsu.city.kobe.lg.jp/news/information/bus/2025winterholiday/)
 
@@ -37,4 +42,4 @@ python scripts/prepare-timetables.py --inputs C:\railway-source-feeds
 
 岡山の固定URLは最新版に更新されるため、取得時期により収録期間と便数が変わります。同梱版のZIPのSHA-256は `e66778c231733fa7725a99f70f39bc096baf1783fe18810014dca8c0f31da4ff` です。路線・乗降制限・停車パターンに予期しない変更があった場合は、変換を停止して箇所を報告します。京都の市ポータルは配布用フォーム、神戸は市カタログが保管するCSVを使用します。新しい改正を入れる際は対象期間、休日や年末年始の例外、列の順序と停車駅の対応も更新します。
 
-出力は `public/data/timetable.json`（出典・カレンダー・便）、`okayama-network.json`（停留場・系統）、`shapes/okaden-*.json`（停留場間の経路）です。保管した原版から変換できること、運転日判定、同名駅を含む接続、時刻の単調増加、午前0時以降の扱いを自動テストで確認できます。
+出力は `public/data/timetable.json`（出典・カレンダー・便）、`okayama-network.json`（岡山停留場・系統）、`shapes/okaden-*.json`（岡山の停留場間経路）です。明知鉄道・伊勢鉄道・富山地方鉄道・とさでん交通の線形はN02から `network.json` に生成し、GTFSの停車時刻を対応する系統へ割り当てます。とさでんは同じroute ID内の便でも枝線が異なるため、各便の停車駅順で対応系統を選びます。変更後は元データから変換できること、運転日判定、同名駅を含む接続、時刻の単調増加、午前0時以降の扱いを自動テストで確認します。

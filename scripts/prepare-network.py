@@ -8,12 +8,14 @@ form edges. Unreachable stops are an error rather than a straight-line fallback.
 import argparse
 from collections import defaultdict
 from functools import lru_cache
+from hashlib import sha1
 from heapq import heappush, heappop
 import json
 from math import cos, hypot, radians, inf
 from pathlib import Path
 from zipfile import ZipFile
 
+from discover_n02_services import discover_n02_services
 from service_patterns import PLATFORM_GAPS_KM, SERVICES, STATION_IDS
 
 
@@ -92,10 +94,16 @@ def save(path, data):
                     encoding="utf-8")
 
 
-def build(zip_path, out_dir):
+def build(zip_path, out_dir, boundary_paths):
     with ZipFile(zip_path) as archive:
         sections = read_features(archive, "RailroadSection")
         stations = read_features(archive, "Station")
+
+    services = list(SERVICES)
+    if boundary_paths:
+        discovered = discover_n02_services(sections, stations, boundary_paths, SERVICES)
+        services.extend(discovered)
+        print(f"Discovered {len(discovered)} additional N02 line patterns.")
 
     @lru_cache(maxsize=2)
     def track_set(groups):
@@ -103,13 +111,62 @@ def build(zip_path, out_dir):
         return graph, anchors(groups, stations, graph)
 
     stops_by_id = {}
+    stations_by_name = defaultdict(list)
+    remembered_ids = set()
+
+    def remember_station(name, identifier, coord):
+        if identifier not in remembered_ids:
+            stations_by_name[name].append((identifier, coord))
+            remembered_ids.add(identifier)
+
+    def auto_station_id(name, operator, coord):
+        nearby = [
+            (km(location, coord), identifier)
+            for identifier, location in stations_by_name[name]
+            if km(location, coord) <= 0.8
+        ]
+        if nearby:
+            return min(nearby)[1]
+        if not stations_by_name[name]:
+            identifier = name
+        else:
+            base = f"{name}（{operator}）"
+            previous = stops_by_id.get(base)
+            if previous and previous["name"] == name and km((previous["lon"], previous["lat"]), coord) <= 0.8:
+                identifier = base
+            elif base not in stops_by_id:
+                identifier = base
+            else:
+                suffix = sha1(f"{name}\0{operator}\0{coord[0]:.4f}\0{coord[1]:.4f}".encode("utf-8")).hexdigest()[:6]
+                identifier = f"{base}-{suffix}"
+        remember_station(name, identifier, coord)
+        return identifier
+
     lines = []
     shape_files = {}
-    for service in SERVICES:
+    for service in services:
         graph, platforms = track_set(tuple(service["tracks"]))
-        line = {k: v for k, v in service.items() if k not in ("tracks", "stations")}
+        if service.get("_n02_auto"):
+            platforms = {
+                name: [anchor]
+                for (name, _), anchor in zip(service["stations"], service["_n02_anchors"])
+            }
+        line = {k: v for k, v in service.items()
+                if k not in ("tracks", "stations", "station_ids", "station_labels",
+                             "_n02_auto", "_n02_anchors")}
         station_names = [s for s, _ in service["stations"]]
-        identifiers = [STATION_IDS.get((service["operator"], name), name) for name in station_names]
+        station_id_overrides = service.get("station_ids", {})
+        station_label_overrides = service.get("station_labels", {})
+        if service.get("_n02_auto"):
+            identifiers = [
+                auto_station_id(name, service["operator"], anchor)
+                for name, anchor in zip(station_names, service["_n02_anchors"])
+            ]
+        else:
+            identifiers = [
+                station_id_overrides.get(index, STATION_IDS.get((service["operator"], name), name))
+                for index, name in enumerate(station_names)
+            ]
         line.update(stops=identifiers, segments=[], distances=[])
         shapes = {}
         previous_end = None
@@ -127,11 +184,14 @@ def build(zip_path, out_dir):
             line["segments"].append(key)
             line["distances"].append(round(distance, 3))
             shapes[key] = points
-            for identifier, (name, pref), (lon, lat) in zip(identifiers[i:i+2], service["stations"][i:i+2], (points[0], points[-1])):
+            for index, identifier, (name, pref), (lon, lat) in zip(
+                    (i, i + 1), identifiers[i:i+2], service["stations"][i:i+2], (points[0], points[-1])):
+                display_name = station_label_overrides.get(index, name)
                 old = stops_by_id.get(identifier)
-                if old and (old["prefecture"] != pref or km((old["lon"], old["lat"]), (lon, lat)) > 0.8):
+                if old and km((old["lon"], old["lat"]), (lon, lat)) > 0.8:
                     raise ValueError(f"conflicting station identity: {name}")
-                station = stops_by_id.setdefault(identifier, dict(id=identifier, name=name, prefecture=pref, lon=lon, lat=lat, operators=[]))
+                station = stops_by_id.setdefault(identifier, dict(id=identifier, name=display_name, prefecture=pref, lon=lon, lat=lat, operators=[]))
+                remember_station(name, identifier, (station["lon"], station["lat"]))
                 if line["operator"] not in station["operators"]:
                     station["operators"].append(line["operator"])
         lines.append(line)
@@ -146,5 +206,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("zip", type=Path)
     parser.add_argument("--out", type=Path, default=Path(__file__).resolve().parents[1] / "public/data")
+    parser.add_argument("--boundaries", type=Path, nargs="*", default=[])
     args = parser.parse_args()
-    build(args.zip, args.out)
+    build(args.zip, args.out, args.boundaries)

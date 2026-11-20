@@ -54,5 +54,5 @@ export function osakaMesh(city:City) {
   `)
   return new C.Primitive({geometryInstances:new C.GeometryInstance({geometry:mesh}),
     appearance:new C.PerInstanceColorAppearance({translucent:false,closed:true,vertexShaderSource,fragmentShaderSource}),
-    modelMatrix:cityTransform(0),asynchronous:false,compressVertices:false,allowPicking:false,shadows:C.ShadowMode.ENABLED})
+    modelMatrix:cityTransform(0),asynchronous:false,compressVertices:false,allowPicking:false,shadows:C.ShadowMode.DISABLED})
 }

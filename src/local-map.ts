@@ -226,7 +226,7 @@ export class CanvasMap {
         if(x< -40||y< -40||x>w+40||y>h+40)continue
         ctx.save();ctx.translate(x,y);ctx.rotate(p.heading-Math.PI/2)
         const length=count===1?16:spacing*s*.94,width=Math.max(3,3*s)
-        ctx.shadowColor=color;ctx.shadowBlur=i===0?8:0;ctx.fillStyle='#e3eff2'
+        ctx.fillStyle='#e3eff2'
         ctx.fillRect(-length/2,-width/2,length,width);ctx.fillStyle=color;ctx.fillRect(-length*.36,-width*.25,length*.72,width*.5)
         if(this.elevation<5&&i===0){ctx.fillStyle='#fff3c5';ctx.fillRect(length/2-2,-width/2,2,width)}
         if(this.elevation<5&&i===count-1){ctx.fillStyle='#ef6156';ctx.fillRect(-length/2,-width/2,2,width)}

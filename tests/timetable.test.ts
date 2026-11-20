@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { buildDay, operating, stationBoard } from '../src/routing'
+import { buildDay, operating, search, stationBoard } from '../src/routing'
 import type { Network, Timetable } from '../src/types'
 
 const read = <T>(name: string): T => JSON.parse(readFileSync('public/data/'+name+'.json','utf8'))
@@ -22,12 +22,15 @@ describe('公開データの運転日と列車時刻', () => {
         throw new Error('時刻の数が不正 ' + t.id)
       const ids = t.stops.map(s => line.stops.indexOf(s))
       for (let i=0; i<t.stops.length; i++) {
-        if (ids[i] < 0 || (i>0 && Math.abs(ids[i]-ids[i-1]) !== 1))
+        if (ids[i] < 0)
           throw new Error('路線の停車順が不正 ' + t.id + ', ' + t.stops[i])
         if (t.arr[i] > t.dep[i] || (i>0 && t.dep[i-1] > t.arr[i])) throw new Error('時刻の逆転 ' + t.id)
       }
+      const direction = ids.slice(1).map((id, i) => id - ids[i])
+      if (!(direction.every(step => step > 0) || direction.every(step => step < 0)))
+        throw new Error('路線の停車順が不正 ' + t.id)
     }
-    expect(sources.size).toBeGreaterThanOrEqual(4)
+    expect(sources.size).toBeGreaterThanOrEqual(6)
   })
   it('岡電の祝日は平日便を運休して休日便を追加する', () => {
     const holiday = '2026-11-23'
@@ -58,6 +61,68 @@ describe('公開データの運転日と列車時刻', () => {
     const board = stationBoard(buildDay(network,data,'2026-11-19'),'新神戸')
     expect(board.some(e => e.line==='kobe-seishin' && e.source==='kobe-seishin' && e.dep===1472 && e.destination==='西神中央')).toBe(true)
     expect(board.map(e => e.dep)).toEqual([...board].map(e => e.dep).sort((a,b)=>a-b))
+  })
+  it('明知鉄道と伊勢鉄道の許諾済みGTFSを有効期間内だけ実時刻として使う', () => {
+    const sources = new Map(data.sources.map(source => [source.id, source]))
+    expect(sources.get('akechi')).toMatchObject({start:'2026-03-14',end:'2027-03-31',license:'CC BY 4.0'})
+    expect(sources.get('ise-railway')).toMatchObject({start:'2026-03-14',end:'2027-03-31',license:'CC BY 4.0'})
+    const active = buildDay(network,data,'2026-11-20')
+    expect(stationBoard(active,'明智').some(e => e.line==='akechi' && e.source==='akechi')).toBe(true)
+    expect(stationBoard(active,'河原田').some(e => e.line==='ise-railway' && e.source==='ise-railway')).toBe(true)
+    const akechi = search(network,data,{from:'明智',to:'恵那',date:'2026-11-20',time:'05:29',mode:'depart'})
+    expect(akechi.journeys[0].steps.some(s => s.source==='akechi')).toBe(true)
+    const ise = search(network,data,{from:'河原田',to:'津',date:'2026-11-20',time:'06:10',mode:'depart'})
+    expect(ise.journeys[0].steps.some(s => s.source==='ise-railway')).toBe(true)
+    const expired = buildDay(network,data,'2027-04-01')
+    expect(expired.some(e => e.source==='akechi' || e.source==='ise-railway')).toBe(false)
+  })
+  it('富山・とさでんの許諾済みGTFS全便を有効期間内だけ実時刻として使う', () => {
+    const sources = new Map(data.sources.map(source => [source.id, source]))
+    expect(sources.get('toyama-tram')).toMatchObject({
+      start:'2026-03-14',end:'2027-03-13',license:'CC0 1.0',
+    })
+    expect(sources.get('tosaden')).toMatchObject({
+      start:'2026-08-01',end:'2027-04-30',license:'CC BY 4.0',
+    })
+    const toyamaTrips = data.trips.filter(trip => trip.source==='toyama-tram')
+    const tosadenTrips = data.trips.filter(trip => trip.source==='tosaden')
+    expect(toyamaTrips).toHaveLength(675)
+    expect(tosadenTrips).toHaveLength(1024)
+    expect(new Set(tosadenTrips.map(trip => trip.service))).toEqual(new Set([
+      'tosaden-ino-gomen','tosaden-ino-sambashi','tosaden-gomen-sambashi',
+      'tosaden-station-ino','tosaden-station-sambashi',
+    ]))
+    expect(tosadenTrips.every(trip => trip.stops.every((stop,index) =>
+      index===0 || stop!=='はりまや橋' || trip.stops[index-1]!=='はりまや橋'))).toBe(true)
+    const gomenSambashi = tosadenTrips.find(trip =>
+      trip.stops[0]==='桟橋通四丁目' && trip.stops.at(-1)==='知寄町')
+    expect(gomenSambashi?.service).toBe('tosaden-gomen-sambashi')
+    const stationSambashi = tosadenTrips.find(trip =>
+      trip.stops[0]==='高知駅前' && trip.stops.at(-1)==='桟橋通五丁目')
+    expect(stationSambashi?.service).toBe('tosaden-station-sambashi')
+    const active = buildDay(network,data,'2026-11-20')
+    expect(stationBoard(active,'岩瀬浜').some(e => e.source==='toyama-tram')).toBe(true)
+    expect(stationBoard(active,'高知駅前').some(e => e.source==='tosaden')).toBe(true)
+    const expired = buildDay(network,data,'2027-05-01')
+    expect(expired.some(e => e.source==='tosaden' || e.source==='toyama-tram')).toBe(false)
+  })
+  it('豊橋鉄道の渥美線・市内線GTFSを許諾と運行日例外に従って使う', () => {
+    const sources = new Map(data.sources.map(source => [source.id, source]))
+    expect(sources.get('toyotetsu')).toMatchObject({
+      start:'2026-01-08',end:'2027-04-24',license:'CC BY 4.0',
+    })
+    const trips = data.trips.filter(trip => trip.source==='toyotetsu')
+    expect(trips).toHaveLength(1133)
+    expect(new Set(trips.map(trip => trip.service))).toEqual(new Set([
+      'toyohashi-atsumi','toyohashi-azumada-akarock','toyohashi-azumada-undokoen',
+    ]))
+    const exceptionCalendar = data.calendars['toyotetsu-1_8_20260108']
+    expect(exceptionCalendar.add).toContain('2027-04-29')
+    expect(operating(exceptionCalendar,'2027-04-29')).toBe(true)
+    expect(operating(exceptionCalendar,'2027-04-30')).toBe(false)
+    const active = buildDay(network,data,'2026-11-20')
+    expect(stationBoard(active,'新豊橋').some(e => e.source==='toyotetsu')).toBe(true)
+    expect(stationBoard(active,'駅前').some(e => e.source==='toyotetsu')).toBe(true)
   })
   it('京都市の公表値と岡電GTFSの到着・発車を保持する', () => {
     const kyoto = data.trips.find(t => t.id==='kyoto-21114-1')!
